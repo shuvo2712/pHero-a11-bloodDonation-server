@@ -33,6 +33,7 @@ async function run() {
 
     const database = client.db("bloodDonationDb");
     const userCollection = database.collection("users");
+    const donationRequestCollection = database.collection("donationRequests");
 
     // Save user data to MongoDB
     app.post('/users', async (req, res) => {
@@ -76,6 +77,27 @@ async function run() {
         }
       };
       const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // Create a new blood donation request
+    app.post('/donation-requests', async (req, res) => {
+      const requestData = req.body;
+
+      // Security Constraint: Blocked users cannot create requests
+      const userEmail = requestData.requesterEmail;
+      const user = await userCollection.findOne({ email: userEmail });
+      if (user && user.status === 'blocked') {
+        return res.status(403).send({ message: 'Blocked users cannot create donation requests' });
+      }
+
+      // Default Status: pending
+      const finalRequest = {
+        ...requestData,
+        donationStatus: 'pending'
+      };
+
+      const result = await donationRequestCollection.insertOne(finalRequest);
       res.send(result);
     });
 
