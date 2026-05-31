@@ -192,23 +192,33 @@ async function run() {
 
     // Update status of a specific donation request (Done, Canceled, or In Progress with donor info)
     app.patch('/donation-requests/status/:id', async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const { status, donorName, donorEmail } = req.body;
-
-      const updateDoc = {
-        $set: {
-          donationStatus: status
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: 'Invalid ID format' });
         }
-      };
+        const filter = { _id: new ObjectId(id) };
+        const { status, donorName, donorEmail } = req.body;
 
-      if (donorName && donorEmail) {
-        updateDoc.$set.donorName = donorName;
-        updateDoc.$set.donorEmail = donorEmail;
+        const updateDoc = {
+          $set: {
+            donationStatus: status
+          }
+        };
+
+        if (donorName && donorEmail) {
+          updateDoc.$set.donorName = donorName;
+          updateDoc.$set.donorEmail = donorEmail;
+        }
+
+        const result = await donationRequestCollection.updateOne(filter, updateDoc);
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: 'Donation request not found' });
+        }
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Internal server error', error: error.message });
       }
-
-      const result = await donationRequestCollection.updateOne(filter, updateDoc);
-      res.send(result);
     });
 
   } finally {
