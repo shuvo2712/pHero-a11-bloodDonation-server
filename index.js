@@ -133,6 +133,23 @@ async function run() {
       }
     });
 
+    // Get all public pending donation requests
+    app.get('/donation-requests/public', async (req, res) => {
+      const query = { donationStatus: 'pending' };
+      const requests = await donationRequestCollection.find(query)
+        .sort({ donationDate: -1, donationTime: -1 })
+        .toArray();
+      res.send(requests);
+    });
+
+    // Get details of a single donation request
+    app.get('/donation-requests/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationRequestCollection.findOne(query);
+      res.send(result);
+    });
+
     // Delete a specific donation request
     app.delete('/donation-requests/:id', async (req, res) => {
       const id = req.params.id;
