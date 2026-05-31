@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -49,6 +50,7 @@ async function run() {
     const database = client.db("bloodDonationDb");
     const userCollection = database.collection("users");
     const donationRequestCollection = database.collection("donationRequests");
+    const fundingCollection = database.collection("funding");
 
     // verify admin middleware (requires verifyToken to be run first to populate req.decoded)
     const verifyAdmin = async (req, res, next) => {
@@ -335,8 +337,39 @@ async function run() {
         }
       });
 
-      // totalFunding will be calculated once the funding collection exists (Step 42)
-      res.send({ totalDonors, totalFunding: 0, totalRequests, statusCounts });
+      // Sum all funding amounts
+      const fundingAgg = await fundingCollection.aggregate([
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]).toArray();
+      const totalFunding = fundingAgg[0]?.total || 0;
+
+      res.send({ totalDonors, totalFunding, totalRequests, statusCounts });
+    });
+
+
+    // Create a Stripe PaymentIntent
+    app.post('/create-payment-intent', verifyToken, async (req, res) => {
+      const { amount } = req.body;
+      const amountInCents = parseInt(amount) * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountInCents,
+        currency: 'usd',
+        payment_method_types: ['card'],
+      });
+      res.send({ clientSecret: paymentIntent.client_secret });
+    });
+
+    // Save a successful funding record
+    app.post('/funding', verifyToken, async (req, res) => {
+      const fundingData = req.body;
+      const result = await fundingCollection.insertOne(fundingData);
+      res.send(result);
+    });
+
+    // Get all funding records
+    app.get('/funding', async (req, res) => {
+      const result = await fundingCollection.find({}).sort({ date: -1 }).toArray();
+      res.send(result);
     });
 
   } finally {
