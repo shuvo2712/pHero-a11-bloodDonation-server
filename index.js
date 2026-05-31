@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -58,6 +58,24 @@ async function run() {
       const email = req.params.email;
       const query = { email: email };
       const result = await userCollection.findOne(query);
+      res.send(result);
+    });
+
+    // Update user profile details
+    app.patch('/users/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedUser = req.body;
+      const updateDoc = {
+        $set: {
+          name: updatedUser.name,
+          photoURL: updatedUser.photoURL,
+          bloodGroup: updatedUser.bloodGroup,
+          district: updatedUser.district,
+          upazila: updatedUser.upazila,
+        }
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
