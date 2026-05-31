@@ -11,6 +11,21 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// verify token middleware
+const verifyToken = (req, res, next) => {
+  if (!req.headers.authorization) {
+    return res.status(401).send({ message: 'unauthorized access' });
+  }
+  const token = req.headers.authorization.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: 'unauthorized access' });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@phero-11-cluster.fugo1bp.mongodb.net/?retryWrites=true&w=majority&appName=pHero-11-Cluster`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -34,6 +49,29 @@ async function run() {
     const database = client.db("bloodDonationDb");
     const userCollection = database.collection("users");
     const donationRequestCollection = database.collection("donationRequests");
+
+    // verify admin middleware (requires verifyToken to be run first to populate req.decoded)
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+      next();
+    };
+
+    // Get all users (Admin only)
+    app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+      const status = req.query.status;
+      const query = {};
+      if (status && status !== 'all') {
+        query.status = status;
+      }
+      const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // Save user data to MongoDB
     app.post('/users', async (req, res) => {
