@@ -101,6 +101,38 @@ async function run() {
       res.send(result);
     });
 
+    // Get donation requests by user email (with optional status filtering and pagination)
+    app.get('/donation-requests/user/:email', async (req, res) => {
+      const email = req.params.email;
+      const status = req.query.status;
+
+      const query = { requesterEmail: email };
+      if (status && status !== 'all') {
+        query.donationStatus = status;
+      }
+
+      // Check if pagination parameters are provided
+      const page = parseInt(req.query.page);
+      const limit = parseInt(req.query.limit);
+
+      if (!isNaN(page) && !isNaN(limit)) {
+        const skip = (page - 1) * limit;
+        const total = await donationRequestCollection.countDocuments(query);
+        const requests = await donationRequestCollection.find(query)
+          .sort({ donationDate: -1, donationTime: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+        res.send({ total, requests });
+      } else {
+        // If not paginated, return all matched requests
+        const requests = await donationRequestCollection.find(query)
+          .sort({ donationDate: -1, donationTime: -1 })
+          .toArray();
+        res.send(requests);
+      }
+    });
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
