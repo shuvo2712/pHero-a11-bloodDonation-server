@@ -133,6 +133,57 @@ async function run() {
       }
     });
 
+    // Delete a specific donation request
+    app.delete('/donation-requests/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationRequestCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // Update details of a specific donation request
+    app.patch('/donation-requests/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedData = req.body;
+      const updateDoc = {
+        $set: {
+          recipientName: updatedData.recipientName,
+          recipientDistrict: updatedData.recipientDistrict,
+          recipientUpazila: updatedData.recipientUpazila,
+          hospitalName: updatedData.hospitalName,
+          fullAddressLine: updatedData.fullAddressLine,
+          bloodGroup: updatedData.bloodGroup,
+          donationDate: updatedData.donationDate,
+          donationTime: updatedData.donationTime,
+          requestMessage: updatedData.requestMessage,
+        }
+      };
+      const result = await donationRequestCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // Update status of a specific donation request (Done, Canceled, or In Progress with donor info)
+    app.patch('/donation-requests/status/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const { status, donorName, donorEmail } = req.body;
+
+      const updateDoc = {
+        $set: {
+          donationStatus: status
+        }
+      };
+
+      if (donorName && donorEmail) {
+        updateDoc.$set.donorName = donorName;
+        updateDoc.$set.donorEmail = donorEmail;
+      }
+
+      const result = await donationRequestCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
