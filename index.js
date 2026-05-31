@@ -31,9 +31,27 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
-    // You can define your MongoDB collections here
-    // const database = client.db("bloodDonationDb");
-    // const userCollection = database.collection("users");
+    const database = client.db("bloodDonationDb");
+    const userCollection = database.collection("users");
+
+    // Save user data to MongoDB
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      
+      if (existingUser) {
+        return res.send({ message: 'user already exists', insertedId: null });
+      }
+
+      // Default fields: role: "donor", status: "active"
+      const result = await userCollection.insertOne({
+        ...user,
+        role: 'donor',
+        status: 'active'
+      });
+      res.send(result);
+    });
 
   } finally {
     // Ensures that the client will close when you finish/error
