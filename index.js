@@ -73,6 +73,26 @@ async function run() {
       res.send(result);
     });
 
+    // Update a user's role (Admin only)
+    app.patch('/users/role/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const { role } = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = { $set: { role: role } };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // Update a user's status (block/unblock) (Admin only)
+    app.patch('/users/status/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = { $set: { status: status } };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
     // Save user data to MongoDB
     app.post('/users', async (req, res) => {
       const user = req.body;
