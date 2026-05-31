@@ -159,6 +159,34 @@ async function run() {
       res.send(result);
     });
 
+    // Get ALL donation requests - for Admin/Volunteer (with status filter and pagination)
+    app.get('/donation-requests', verifyToken, async (req, res) => {
+      const status = req.query.status;
+      const page = parseInt(req.query.page);
+      const limit = parseInt(req.query.limit);
+
+      const query = {};
+      if (status && status !== 'all') {
+        query.donationStatus = status;
+      }
+
+      if (!isNaN(page) && !isNaN(limit)) {
+        const skip = (page - 1) * limit;
+        const total = await donationRequestCollection.countDocuments(query);
+        const requests = await donationRequestCollection.find(query)
+          .sort({ donationDate: -1, donationTime: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+        res.send({ total, requests });
+      } else {
+        const requests = await donationRequestCollection.find(query)
+          .sort({ donationDate: -1, donationTime: -1 })
+          .toArray();
+        res.send(requests);
+      }
+    });
+
     // Get donation requests by user email (with optional status filtering and pagination)
     app.get('/donation-requests/user/:email', async (req, res) => {
       const email = req.params.email;
