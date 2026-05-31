@@ -307,6 +307,27 @@ async function run() {
       }
     });
 
+    // Admin stats endpoint
+    app.get('/admin/stats', verifyToken, verifyAdmin, async (req, res) => {
+      const totalDonors = await userCollection.countDocuments({ role: 'donor' });
+      const totalRequests = await donationRequestCollection.countDocuments({});
+
+      // Get per-status counts using aggregation
+      const statusAgg = await donationRequestCollection.aggregate([
+        { $group: { _id: '$donationStatus', count: { $sum: 1 } } }
+      ]).toArray();
+
+      const statusCounts = { pending: 0, inprogress: 0, done: 0, canceled: 0 };
+      statusAgg.forEach(item => {
+        if (statusCounts.hasOwnProperty(item._id)) {
+          statusCounts[item._id] = item.count;
+        }
+      });
+
+      // totalFunding will be calculated once the funding collection exists (Step 42)
+      res.send({ totalDonors, totalFunding: 0, totalRequests, statusCounts });
+    });
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
