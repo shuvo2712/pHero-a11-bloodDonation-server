@@ -144,10 +144,20 @@ async function run() {
 
     // Get details of a single donation request
     app.get('/donation-requests/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await donationRequestCollection.findOne(query);
-      res.send(result);
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: 'Invalid ID format' });
+        }
+        const query = { _id: new ObjectId(id) };
+        const result = await donationRequestCollection.findOne(query);
+        if (!result) {
+          return res.status(404).send({ message: 'Donation request not found' });
+        }
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Internal server error', error: error.message });
+      }
     });
 
     // Delete a specific donation request
