@@ -307,6 +307,17 @@ async function run() {
       }
     });
 
+    // Search donors by blood group, district, upazila
+    app.get('/search', async (req, res) => {
+      const { bloodGroup, district, upazila } = req.query;
+      const query = { role: 'donor', status: 'active' };
+      if (bloodGroup) query.bloodGroup = bloodGroup;
+      if (district) query.district = district;
+      if (upazila) query.upazila = upazila;
+      const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // Admin stats endpoint
     app.get('/admin/stats', verifyToken, verifyAdmin, async (req, res) => {
       const totalDonors = await userCollection.countDocuments({ role: 'donor' });
